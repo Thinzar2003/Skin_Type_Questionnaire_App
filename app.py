@@ -2,12 +2,6 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 
-# ── Page config ───────────────────────────────────────────────────
-st.set_page_config(
-    page_title='Skin Type Analyzer',
-    page_icon='🧴',
-    layout='centered'
-)
 
 # ── Custom CSS ────────────────────────────────────────────────────
 st.markdown('''
@@ -154,15 +148,6 @@ if img_file:
 
 st.divider()
 
-# QUESTIONS
-QUESTIONS = [
-    ('How does your skin feel after washing?', [
-        'Very tight and uncomfortable','Slightly tight','Comfortable and balanced','Fine, no particular feeling'
-    ]),
-    ('By midday, how does your skin look?', [
-        'Very shiny all over','Shiny only on forehead, nose, chin (T-zone)','Still looks the same as morning','Feels drier and tighter'
-    ]),
-]
 
 answers = []
 all_answered = True
