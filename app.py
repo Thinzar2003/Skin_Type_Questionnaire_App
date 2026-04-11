@@ -152,11 +152,7 @@ st.divider()
 answers = []
 all_answered = True
 
-for i,(q,opts) in enumerate(QUESTIONS):
-    ans = st.radio(q, opts, key=i, index=None)
-    answers.append(ans)
-    if ans is None:
-        all_answered = False
+
 
 # BUTTON
 analyze = st.button("🔍 Analyze", disabled=not all_answered)
