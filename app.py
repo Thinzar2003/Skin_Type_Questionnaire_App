@@ -1,152 +1,168 @@
 import streamlit as st
 import numpy as np
+from PIL import Image
 
 # ── Page config ───────────────────────────────────────────────────
-st.set_page_config(
-    page_title='Skin Type Analyzer',
-    page_icon='🧴',
-    layout='centered'
-)
+st.set_page_config(page_title='Skin AI Agent', page_icon='🧴', layout='centered')
 
-# ── Custom CSS ────────────────────────────────────────────────────
-st.markdown('''
+# ── STYLE ─────────────────────────────────────────────────────────
+st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap');
-
-html, body, [class*='css'] {
-    font-family: 'DM Sans', sans-serif;
-}
-h1, h2, h3 {
-    font-family: 'DM Serif Display', serif !important;
-}
-.main { background-color: #fdf8f4; }
-.stButton > button {
-    background: #2d2d2d;
-    color: white;
-    border-radius: 8px;
-    width: 100%;
-}
+body { font-family: 'DM Sans'; }
+.main { background-color:#fdf8f4; }
 .result-box {
-    background: white;
-    border-radius: 16px;
-    padding: 2rem;
-    margin: 1rem 0;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-    border-left: 5px solid;
-}
-.score-bar {
-    height: 8px;
-    border-radius: 4px;
-    margin: 4px 0 12px 0;
+    background:white;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.08);
 }
 </style>
-''', unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# ── AI MODEL (NO SKLEARN) ─────────────────────────────────────────
-def ai_model(answers):
-    # Convert answers into numbers
-    vector = [i for i in range(len(answers))]
+# ── AI AGENT CORE ────────────────────────────────────────────────
+class SkinAIAgent:
 
-    # Fake "AI weights"
-    weights = {
-        "Dry": np.dot(vector, np.random.uniform(0.8, 1.2, len(vector))),
-        "Normal": np.dot(vector, np.random.uniform(0.6, 1.0, len(vector))),
-        "Oily": np.dot(vector, np.random.uniform(1.0, 1.4, len(vector))),
-        "Combination": np.dot(vector, np.random.uniform(0.9, 1.3, len(vector))),
-    }
+    def __init__(self):
+        self.skin_types = ["Dry", "Normal", "Oily", "Combination"]
 
-    total = sum(weights.values())
-    percentages = {k: round(v/total*100,1) for k,v in weights.items()}
-    result = max(weights, key=weights.get)
-    confidence = round(percentages[result],1)
+    def analyze_answers(self, answers):
+        score = np.array(answers)
 
-    return result, percentages, confidence
+        dry = score[0] + score[3] + score[6]
+        oily = score[1] + score[2] + score[7]
+        combo = score[4] + score[6] + score[1]
+        normal = sum(score) / 2
 
-# ── ORIGINAL LOGIC (UNCHANGED) ────────────────────────────────────
-def classify_skin(answers):
-    scores = {'Dry': 0, 'Normal': 0, 'Oily': 0, 'Combination': 0}
+        scores = {
+            "Dry": dry,
+            "Oily": oily,
+            "Combination": combo,
+            "Normal": normal
+        }
 
-    q1_map = {
-        'Very tight and uncomfortable': {'Dry': 3},
-        'Slightly tight': {'Dry': 2, 'Normal': 1},
-        'Comfortable and balanced': {'Normal': 3},
-        'Fine, no particular feeling': {'Normal': 2, 'Oily': 1},
-    }
-    for k, v in q1_map.get(answers[0], {}).items():
-        scores[k] += v
+        return scores
 
-    # (same logic for all questions — shortened for clarity)
-    # You can paste your full mapping here if needed
+    def analyze_image(self, image):
+        img = np.array(image)
+        brightness = np.mean(img)
 
-    total = sum(scores.values()) or 1
-    percentages = {k: round(v/total*100,1) for k,v in scores.items()}
-    result = max(scores, key=scores.get)
-    confidence = round(percentages[result],1)
+        if brightness > 180:
+            return "Oily"
+        elif brightness < 80:
+            return "Dry"
+        else:
+            return "Normal"
 
-    return result, percentages, confidence
+    def decide(self, answer_scores, image_result):
+        # Combine both signals
+        final_scores = answer_scores.copy()
 
-# ── SKIN INFO ────────────────────────────────────────────────────
-SKIN_INFO = {
-    'Dry': {'emoji':'💧','color':'#3b82f6','bg':'#eff6ff','description':'Dry skin'},
-    'Normal': {'emoji':'✨','color':'#10b981','bg':'#ecfdf5','description':'Normal skin'},
-    'Oily': {'emoji':'💫','color':'#f59e0b','bg':'#fffbeb','description':'Oily skin'},
-    'Combination': {'emoji':'⚡','color':'#8b5cf6','bg':'#f5f3ff','description':'Combination skin'}
-}
+        if image_result:
+            final_scores[image_result] += 3
 
-# ── QUESTIONS ─────────────────────────────────────────────────────
-QUESTIONS = [
-    {'q':'How does your skin feel after washing?',
-     'opts':['Very tight and uncomfortable','Slightly tight','Comfortable and balanced','Fine, no particular feeling']},
+        skin = max(final_scores, key=final_scores.get)
 
-    {'q':'By midday, how does your skin look?',
-     'opts':['Very shiny all over','Shiny only on forehead, nose, chin (T-zone)','Still looks the same as morning','Feels drier and tighter']},
+        total = sum(final_scores.values())
+        confidence = round(final_scores[skin] / total * 100, 1)
+
+        return skin, confidence, final_scores
+
+    def recommend(self, skin):
+        routines = {
+            "Dry": [
+                "Hydrating cleanser",
+                "Hyaluronic acid serum",
+                "Heavy moisturizer",
+                "SPF 50"
+            ],
+            "Oily": [
+                "Foam cleanser",
+                "Niacinamide serum",
+                "Oil-free moisturizer",
+                "Mattifying sunscreen"
+            ],
+            "Combination": [
+                "Gentle cleanser",
+                "Light moisturizer",
+                "Treat T-zone separately",
+                "SPF daily"
+            ],
+            "Normal": [
+                "Simple cleanser",
+                "Light hydration",
+                "SPF daily",
+                "Weekly exfoliation"
+            ]
+        }
+
+        return routines[skin]
+
+    def explain(self, skin, confidence):
+        return f"AI Agent predicts your skin is {skin} with {confidence}% confidence based on your answers and image."
+
+# ── INIT AGENT ───────────────────────────────────────────────────
+agent = SkinAIAgent()
+
+# ── UI ───────────────────────────────────────────────────────────
+st.title("🧴 Skin AI Agent")
+
+# IMAGE INPUT
+st.subheader("📸 Upload Face Image (optional)")
+img_file = st.file_uploader("Upload image", type=["jpg","png"])
+
+image_result = None
+if img_file:
+    img = Image.open(img_file)
+    st.image(img, width=200)
+    image_result = agent.analyze_image(img)
+
+# QUESTIONS
+st.subheader("📝 Answer Questions")
+
+questions = [
+    "Skin feels tight",
+    "Face gets shiny",
+    "Acne frequency",
+    "Feels dry",
+    "Large pores",
+    "Sensitive skin",
+    "Rough texture",
+    "Oil on tissue"
 ]
 
-# ── UI ────────────────────────────────────────────────────────────
-st.title('🧴 Skin Type Analyzer')
-st.markdown('*AI-powered + dermatologist-based analysis*')
-st.divider()
+options = ["Low", "Medium", "High"]
 
 answers = []
-all_answered = True
+for i,q in enumerate(questions):
+    val = st.selectbox(q, options, key=i)
+    answers.append(options.index(val))
 
-for i, q in enumerate(QUESTIONS):
-    st.markdown(f'**Question {i+1}**')
-    ans = st.radio('', q['opts'], key=i, index=None)
-    answers.append(ans)
-    if ans is None:
-        all_answered = False
+# RUN AI
+if st.button("🔍 Analyze with AI Agent"):
 
-col1,col2,col3 = st.columns([1,2,1])
-with col2:
-    btn = st.button('🔍 Analyze', disabled=not all_answered)
-
-if btn:
-    # ORIGINAL result
-    skin, pcts, conf = classify_skin(answers)
-
-    # AI result
-    ai_skin, ai_pcts, ai_conf = ai_model(answers)
-
-    info = SKIN_INFO[skin]
+    answer_scores = agent.analyze_answers(answers)
+    skin, confidence, final_scores = agent.decide(answer_scores, image_result)
 
     st.divider()
-    st.markdown("## 📊 Result")
 
-    # MAIN RESULT (same style)
-    st.markdown(f'''
-    <div class="result-box" style="border-color:{info["color"]};background:{info["bg"]}">
-        <h2 style="color:{info["color"]}">{info["emoji"]} {skin} Skin</h2>
-        <p>{info["description"]}</p>
+    # RESULT
+    st.markdown(f"""
+    <div class="result-box">
+    <h2>{skin} Skin</h2>
+    <p>{agent.explain(skin, confidence)}</p>
     </div>
-    ''', unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-    # AI RESULT
-    st.markdown("### 🤖 AI Prediction")
-    st.write(f"AI thinks: **{ai_skin}** ({ai_conf}%)")
+    # SCORES
+    st.subheader("📊 Confidence")
+    for k,v in final_scores.items():
+        st.write(f"{k}: {round(v,1)}")
+        st.progress(int(v*10))
 
-    # Score bars
-    colors = {'Dry':'#3b82f6','Normal':'#10b981','Oily':'#f59e0b','Combination':'#8b5cf6'}
-    for stype, pct in pcts.items():
-        st.markdown(f"{stype}")
-        st.markdown(f'<div class="score-bar" style="width:{pct}%;background:{colors[stype]}"></div>', unsafe_allow_html=True)
+    # ROUTINE
+    st.subheader("💆 Recommended Routine")
+    routine = agent.recommend(skin)
+    for r in routine:
+        st.write(f"• {r}")
+
+    st.success("AI Agent Completed Analysis ✅")
