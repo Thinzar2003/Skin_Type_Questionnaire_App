@@ -1,75 +1,140 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-from sklearn.ensemble import RandomForestClassifier
 
 # ── Page config ─────────────────────────────
-st.set_page_config(page_title="Skin AI Analyzer", page_icon="🧴")
+st.set_page_config(page_title="Skin Type Analyzer", page_icon="🧴", layout="centered")
 
-# ── CSS ────────────────────────────────────
+# ── CSS ─────────────────────────────────────
 st.markdown("""
 <style>
-body {background:#fdf8f4;}
-.result {
-    padding:20px;
-    border-radius:15px;
-    background:white;
-    box-shadow:0 4px 20px rgba(0,0,0,0.08);
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'DM Sans', sans-serif;
+    background-color: #fdf8f4;
+}
+h1, h2, h3 {
+    font-family: 'DM Serif Display', serif;
+}
+.result-box {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    margin-top: 10px;
+}
+.score-bar {
+    height: 8px;
+    border-radius: 4px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🧴 Skin Type AI Analyzer")
+# ── Skin scoring ────────────────────────────
+def classify_skin(answers):
+    scores = {'Dry': 0, 'Normal': 0, 'Oily': 0, 'Combination': 0}
 
-# ── Fake Training Data (for demo AI) ───────
-X = [
-    [200,50],[180,40],[100,30],[90,20],
-    [220,60],[150,35],[120,25],[80,15]
-]
-y = ["Oily","Oily","Normal","Dry","Oily","Normal","Combination","Dry"]
+    mapping = [
+        {'Dry':3},{'Oily':3},{'Normal':3},{'Combination':3}
+    ]
 
-model = RandomForestClassifier()
-model.fit(X,y)
+    for ans in answers:
+        scores[ans] += 2
 
-# ── Image Feature Extract ─────────────────
-def extract_features(img):
+    total = sum(scores.values()) or 1
+    pct = {k: round(v/total*100,1) for k,v in scores.items()}
+    skin = max(scores, key=scores.get)
+    conf = round(scores[skin]/total*100,1)
+
+    return skin, pct, conf
+
+# ── AI-like image analysis ──────────────────
+def analyze_image(img):
     arr = np.array(img)
+
     brightness = np.mean(arr)
     contrast = np.std(arr)
-    return [brightness, contrast]
 
-# ── UI Tabs ───────────────────────────────
-tab1, tab2 = st.tabs(["📝 Questionnaire","📸 AI Image"])
+    scores = {'Dry':0,'Normal':0,'Oily':0,'Combination':0}
 
-# ── TAB 1 ────────────────────────────────
+    if brightness > 180:
+        scores['Oily'] += 3
+    elif brightness > 130:
+        scores['Normal'] += 2
+    else:
+        scores['Dry'] += 2
+
+    if contrast > 50:
+        scores['Combination'] += 2
+    else:
+        scores['Normal'] += 1
+
+    total = sum(scores.values()) or 1
+    pct = {k: round(v/total*100,1) for k,v in scores.items()}
+    skin = max(scores, key=scores.get)
+    conf = round(scores[skin]/total*100,1)
+
+    features = {
+        "Brightness": round(brightness,1),
+        "Contrast": round(contrast,1)
+    }
+
+    return skin, pct, conf, features
+
+# ── UI ──────────────────────────────────────
+st.title("🧴 Skin Type Analyzer")
+st.markdown("Discover your skin type using questionnaire and AI image analysis")
+
+tab1, tab2 = st.tabs(["📝 Questionnaire", "📸 Image AI"])
+
+# ── TAB 1 ──────────────────────────────────
 with tab1:
-    st.subheader("Answer Questions")
+    st.subheader("Answer questions")
 
-    q1 = st.selectbox("Skin feel?", ["Dry","Normal","Oily","Combination"])
-    q2 = st.selectbox("Midday look?", ["Dry","Normal","Oily","Combination"])
+    options = ["Dry","Normal","Oily","Combination"]
+
+    answers = []
+    for i in range(5):
+        ans = st.selectbox(f"Question {i+1}", options, key=i)
+        answers.append(ans)
 
     if st.button("Analyze Questionnaire"):
-        st.success(f"Result: {q1}")
+        skin, pct, conf = classify_skin(answers)
 
-# ── TAB 2 ────────────────────────────────
+        st.markdown(f"""
+        <div class="result-box">
+        <h2>✨ {skin} Skin</h2>
+        <p>Confidence: {conf}%</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        for k,v in pct.items():
+            st.write(f"{k}: {v}%")
+
+# ── TAB 2 ──────────────────────────────────
 with tab2:
-    st.subheader("Upload Image")
+    st.subheader("Upload your photo")
 
-    file = st.file_uploader("Upload face image")
+    file = st.file_uploader("Upload image", type=["jpg","png","jpeg"])
 
     if file:
         img = Image.open(file)
         st.image(img, use_column_width=True)
 
-        features = extract_features(img)
-
         if st.button("Run AI Analysis"):
-            pred = model.predict([features])[0]
+            skin, pct, conf, features = analyze_image(img)
 
             st.markdown(f"""
-            <div class="result">
-            <h2>✨ AI Result: {pred}</h2>
-            <p>Brightness: {round(features[0],1)}</p>
-            <p>Contrast: {round(features[1],1)}</p>
+            <div class="result-box">
+            <h2>🤖 AI Result: {skin}</h2>
+            <p>Confidence: {conf}%</p>
             </div>
             """, unsafe_allow_html=True)
+
+            st.write("### Image Features")
+            st.write(features)
+
+            st.write("### Score")
+            for k,v in pct.items():
+                st.write(f"{k}: {v}%")
