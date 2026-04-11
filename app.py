@@ -169,11 +169,7 @@ if analyze:
 import streamlit as st
 
 # ── Page config ───────────────────────────────────────────────────
-st.set_page_config(
-    page_title='Skin Type Analyzer',
-    page_icon='🧴',
-    layout='centered'
-)
+
 
 # ── Custom CSS ────────────────────────────────────────────────────
 st.markdown('''
