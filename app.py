@@ -3,13 +3,30 @@ import numpy as np
 from PIL import Image
 
 # ── Page config ───────────────────────────────────────────────────
-st.set_page_config(page_title='Skin AI Agent', page_icon='🧴', layout='centered')
+st.set_page_config(
+    page_title='Skin AI Agent',
+    page_icon='🧴',
+    layout='centered'
+)
 
 # ── STYLE ─────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-body { font-family: 'DM Sans'; }
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans&display=swap');
+
+html, body {
+    font-family: 'DM Sans', sans-serif;
+}
 .main { background-color:#fdf8f4; }
+
+.stButton > button {
+    background: #2d2d2d;
+    color: white;
+    border-radius: 8px;
+    padding: 0.6rem;
+    width: 100%;
+}
+
 .result-box {
     background:white;
     padding:20px;
@@ -19,25 +36,17 @@ body { font-family: 'DM Sans'; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── AI AGENT CORE ────────────────────────────────────────────────
+# ── AI AGENT ──────────────────────────────────────────────────────
 class SkinAIAgent:
-
-    def __init__(self):
-        self.skin_types = ["Dry", "Normal", "Oily", "Combination"]
 
     def analyze_answers(self, answers):
         score = np.array(answers)
 
-        dry = score[0] + score[3] + score[6]
-        oily = score[1] + score[2] + score[7]
-        combo = score[4] + score[6] + score[1]
-        normal = sum(score) / 2
-
         scores = {
-            "Dry": dry,
-            "Oily": oily,
-            "Combination": combo,
-            "Normal": normal
+            "Dry": score[0] + score[3] + score[6],
+            "Oily": score[1] + score[2] + score[7],
+            "Combination": score[4] + score[6] + score[1],
+            "Normal": sum(score) / 2
         }
 
         return scores
@@ -54,14 +63,12 @@ class SkinAIAgent:
             return "Normal"
 
     def decide(self, answer_scores, image_result):
-        # Combine both signals
         final_scores = answer_scores.copy()
 
         if image_result:
             final_scores[image_result] += 3
 
         skin = max(final_scores, key=final_scores.get)
-
         total = sum(final_scores.values())
         confidence = round(final_scores[skin] / total * 100, 1)
 
@@ -98,7 +105,7 @@ class SkinAIAgent:
         return routines[skin]
 
     def explain(self, skin, confidence):
-        return f"AI Agent predicts your skin is {skin} with {confidence}% confidence based on your answers and image."
+        return f"AI predicts your skin is {skin} with {confidence}% confidence."
 
 # ── INIT AGENT ───────────────────────────────────────────────────
 agent = SkinAIAgent()
@@ -106,8 +113,8 @@ agent = SkinAIAgent()
 # ── UI ───────────────────────────────────────────────────────────
 st.title("🧴 Skin AI Agent")
 
-# IMAGE INPUT
-st.subheader("📸 Upload Face Image (optional)")
+# IMAGE UPLOAD
+st.subheader("📸 Upload Face Image (Optional)")
 img_file = st.file_uploader("Upload image", type=["jpg","png"])
 
 image_result = None
@@ -115,6 +122,8 @@ if img_file:
     img = Image.open(img_file)
     st.image(img, width=200)
     image_result = agent.analyze_image(img)
+
+st.divider()
 
 # QUESTIONS
 st.subheader("📝 Answer Questions")
@@ -133,11 +142,11 @@ questions = [
 options = ["Low", "Medium", "High"]
 
 answers = []
-for i,q in enumerate(questions):
-    val = st.selectbox(q, options, key=i)
+for i, q in enumerate(questions):
+    val = st.selectbox(q, options, key=i, index=1)  # default = Medium
     answers.append(options.index(val))
 
-# RUN AI
+# ANALYZE BUTTON
 if st.button("🔍 Analyze with AI Agent"):
 
     answer_scores = agent.analyze_answers(answers)
@@ -145,24 +154,26 @@ if st.button("🔍 Analyze with AI Agent"):
 
     st.divider()
 
-    # RESULT
+    # RESULT BOX
     st.markdown(f"""
     <div class="result-box">
-    <h2>{skin} Skin</h2>
-    <p>{agent.explain(skin, confidence)}</p>
+        <h2>{skin} Skin</h2>
+        <p>{agent.explain(skin, confidence)}</p>
     </div>
     """, unsafe_allow_html=True)
 
     # SCORES
-    st.subheader("📊 Confidence")
-    for k,v in final_scores.items():
-        st.write(f"{k}: {round(v,1)}")
-        st.progress(int(v*10))
+    st.subheader("📊 Confidence Breakdown")
+    for k, v in final_scores.items():
+        percent = int((v / sum(final_scores.values())) * 100)
+        st.write(f"{k}: {percent}%")
+        st.progress(percent)
+
+    st.divider()
 
     # ROUTINE
     st.subheader("💆 Recommended Routine")
-    routine = agent.recommend(skin)
-    for r in routine:
+    for r in agent.recommend(skin):
         st.write(f"• {r}")
 
-    st.success("AI Agent Completed Analysis ✅")
+    st.success("✅ AI Analysis Complete")
