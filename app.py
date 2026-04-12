@@ -3,62 +3,54 @@ import numpy as np
 from PIL import Image
 import os
 
-# Optional TensorFlow import (safe)
+# Safe TensorFlow import
 try:
     from tensorflow.keras.models import load_model
 except:
     load_model = None
 
-# ── PAGE CONFIG ───────────────────────────────────────────────────
+# ── PAGE CONFIG ─────────────────────────────────────
 st.set_page_config(
     page_title='Skin Type Analyzer',
     page_icon='🧴',
     layout='centered'
 )
 
-# ── CUSTOM CSS ────────────────────────────────────────────────────
-st.markdown('''
+# ── CUSTOM CSS ─────────────────────────────────────
+st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans&display=swap');
-
-html, body {
-    font-family: 'DM Sans', sans-serif;
-}
-h1, h2 {
-    font-family: 'DM Serif Display', serif;
-}
+body {font-family: sans-serif;}
 .main { background-color: #fdf8f4; }
 
 .stButton > button {
     background: #2d2d2d;
     color: white;
-    border-radius: 8px;
+    border-radius: 10px;
     width: 100%;
 }
 
 .result-box {
     background: white;
-    padding: 2rem;
-    border-radius: 16px;
-    border-left: 5px solid #2d2d2d;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    text-align: center;
 }
 </style>
-''', unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# ── LOAD MODEL ───────────────────────────────────────────────────
+# ── LOAD MODEL ─────────────────────────────────────
 @st.cache_resource
 def load_cnn():
     if load_model is None:
         return None
-
     if os.path.exists("skin_model.h5"):
         return load_model("skin_model.h5")
     return None
 
 model = load_cnn()
 
-# ── AI IMAGE ANALYSIS ─────────────────────────────────────────────
+# ── AI IMAGE ANALYSIS ──────────────────────────────
 def analyze_image(img):
     if model is None:
         return None, None
@@ -75,59 +67,50 @@ def analyze_image(img):
 
     return classes[idx], confidence
 
-# ── QUIZ SCORING ─────────────────────────────────────────────────
+# ── QUIZ LOGIC ─────────────────────────────────────
 def classify_skin(answers):
     scores = {'Dry': 0, 'Normal': 0, 'Oily': 0, 'Combination': 0}
 
     maps = [
-        {
-            'Very tight and uncomfortable': {'Dry': 3},
-            'Slightly tight': {'Dry': 2, 'Normal': 1},
-            'Comfortable and balanced': {'Normal': 3},
-            'Fine, no particular feeling': {'Normal': 2, 'Oily': 1},
-        },
-        {
-            'Very shiny all over': {'Oily': 3},
-            'Shiny only on forehead, nose, chin (T-zone)': {'Combination': 3},
-            'Still looks the same as morning': {'Normal': 3},
-            'Feels drier and tighter': {'Dry': 3},
-        },
-        {
-            'Frequently, all over face': {'Oily': 2},
-            'Occasionally, mainly T-zone': {'Combination': 2},
-            'Rarely': {'Normal': 2},
-            'Almost never, but skin feels flaky': {'Dry': 2},
-        },
-        {
-            'Very dry, flaky or itchy': {'Dry': 3},
-            'Slightly dry in some areas': {'Combination': 2, 'Dry': 1},
-            'Normal, no issues': {'Normal': 3},
-            'Gets oily quickly': {'Oily': 3},
-        },
-        {
-            'Large and visible, especially on nose': {'Oily': 2, 'Combination': 1},
-            'Visible only on T-zone': {'Combination': 3},
-            'Small and barely visible': {'Normal': 2, 'Dry': 1},
-            'Very small, skin looks tight': {'Dry': 2},
-        },
-        {
-            'Often gets irritated or red': {'Dry': 2},
-            'Sometimes breaks out': {'Oily': 1, 'Combination': 1},
-            'Rarely reacts': {'Normal': 2},
-            'Absorbs products quickly, needs more': {'Oily': 2},
-        },
-        {
-            'Rough, flaky or tight': {'Dry': 3},
-            'Smooth in some areas, oily in others': {'Combination': 3},
-            'Smooth and balanced overall': {'Normal': 3},
-            'Consistently shiny and greasy': {'Oily': 3},
-        },
-        {
-            'A lot of oil all over': {'Oily': 3},
-            'Oil mainly from T-zone': {'Combination': 3},
-            'Very little oil': {'Normal': 2},
-            'Almost nothing, skin is dry': {'Dry': 3},
-        }
+        {'Very tight and uncomfortable': {'Dry': 3},
+         'Slightly tight': {'Dry': 2, 'Normal': 1},
+         'Comfortable and balanced': {'Normal': 3},
+         'Fine, no particular feeling': {'Normal': 2, 'Oily': 1}},
+
+        {'Very shiny all over': {'Oily': 3},
+         'Shiny only on forehead, nose, chin (T-zone)': {'Combination': 3},
+         'Still looks the same as morning': {'Normal': 3},
+         'Feels drier and tighter': {'Dry': 3}},
+
+        {'Frequently, all over face': {'Oily': 2},
+         'Occasionally, mainly T-zone': {'Combination': 2},
+         'Rarely': {'Normal': 2},
+         'Almost never, but skin feels flaky': {'Dry': 2}},
+
+        {'Very dry, flaky or itchy': {'Dry': 3},
+         'Slightly dry in some areas': {'Combination': 2, 'Dry': 1},
+         'Normal, no issues': {'Normal': 3},
+         'Gets oily quickly': {'Oily': 3}},
+
+        {'Large and visible, especially on nose': {'Oily': 2, 'Combination': 1},
+         'Visible only on T-zone': {'Combination': 3},
+         'Small and barely visible': {'Normal': 2, 'Dry': 1},
+         'Very small, skin looks tight': {'Dry': 2}},
+
+        {'Often gets irritated or red': {'Dry': 2},
+         'Sometimes breaks out': {'Oily': 1, 'Combination': 1},
+         'Rarely reacts': {'Normal': 2},
+         'Absorbs products quickly, needs more': {'Oily': 2}},
+
+        {'Rough, flaky or tight': {'Dry': 3},
+         'Smooth in some areas, oily in others': {'Combination': 3},
+         'Smooth and balanced overall': {'Normal': 3},
+         'Consistently shiny and greasy': {'Oily': 3}},
+
+        {'A lot of oil all over': {'Oily': 3},
+         'Oil mainly from T-zone': {'Combination': 3},
+         'Very little oil': {'Normal': 2},
+         'Almost nothing, skin is dry': {'Dry': 3}}
     ]
 
     for i, answer in enumerate(answers):
@@ -135,105 +118,47 @@ def classify_skin(answers):
             scores[k] += v
 
     total = sum(scores.values())
-    percentages = {k: round(v/total*100, 1) for k, v in scores.items()}
+    percentages = {k: round(v / total * 100, 1) for k, v in scores.items()}
     skin_type = max(scores, key=scores.get)
-    confidence = round(scores[skin_type]/total*100, 1)
+    confidence = round(scores[skin_type] / total * 100, 1)
 
     return skin_type, percentages, confidence
 
-# ── PRODUCTS ─────────────────────────────────────────────────────
+# ── PRODUCTS ───────────────────────────────────────
 PRODUCTS = {
-    "Dry": [
-        "CeraVe Moisturizing Cream",
-        "La Roche-Posay Hydrating Cleanser",
-        "The Ordinary Hyaluronic Acid"
-    ],
-    "Oily": [
-        "The Ordinary Niacinamide 10%",
-        "COSRX Salicylic Cleanser",
-        "Biore UV Aqua Rich SPF"
-    ],
-    "Normal": [
-        "Neutrogena Hydro Boost",
-        "Cetaphil Gentle Cleanser",
-        "Innisfree Green Tea Serum"
-    ],
-    "Combination": [
-        "Laneige Water Bank Cream",
-        "COSRX Low pH Cleanser",
-        "Some By Mi Toner"
-    ]
+    "Dry": ["CeraVe Moisturizing Cream", "Hyaluronic Acid Serum"],
+    "Oily": ["Niacinamide Serum", "Salicylic Cleanser"],
+    "Normal": ["Neutrogena Hydro Boost", "Gentle Cleanser"],
+    "Combination": ["COSRX Cleanser", "Laneige Cream"]
 }
 
-# ── QUESTIONS ────────────────────────────────────────────────────
+# ── QUESTIONS ──────────────────────────────────────
 QUESTIONS = [
-    ("How does your skin feel after washing?", [
-        'Very tight and uncomfortable',
-        'Slightly tight',
-        'Comfortable and balanced',
-        'Fine, no particular feeling'
-    ]),
-    ("By midday, how does your skin look?", [
-        'Very shiny all over',
-        'Shiny only on forehead, nose, chin (T-zone)',
-        'Still looks the same as morning',
-        'Feels drier and tighter'
-    ]),
-    ("Breakouts?", [
-        'Frequently, all over face',
-        'Occasionally, mainly T-zone',
-        'Rarely',
-        'Almost never, but skin feels flaky'
-    ]),
-    ("Without moisturizer?", [
-        'Very dry, flaky or itchy',
-        'Slightly dry in some areas',
-        'Normal, no issues',
-        'Gets oily quickly'
-    ]),
-    ("Pores?", [
-        'Large and visible, especially on nose',
-        'Visible only on T-zone',
-        'Small and barely visible',
-        'Very small, skin looks tight'
-    ]),
-    ("Reaction to products?", [
-        'Often gets irritated or red',
-        'Sometimes breaks out',
-        'Rarely reacts',
-        'Absorbs products quickly, needs more'
-    ]),
-    ("Texture?", [
-        'Rough, flaky or tight',
-        'Smooth in some areas, oily in others',
-        'Smooth and balanced overall',
-        'Consistently shiny and greasy'
-    ]),
-    ("Blotting paper?", [
-        'A lot of oil all over',
-        'Oil mainly from T-zone',
-        'Very little oil',
-        'Almost nothing, skin is dry'
-    ])
+    ("After washing?", ['Very tight and uncomfortable','Slightly tight','Comfortable and balanced','Fine']),
+    ("Midday skin?", ['Very shiny all over','T-zone only','Same as morning','Feels dry']),
+    ("Breakouts?", ['Frequent','Sometimes','Rare','Almost never']),
+    ("Without moisturizer?", ['Very dry','Slightly dry','Normal','Gets oily']),
+    ("Pores?", ['Large','T-zone','Small','Very small']),
+    ("Reaction?", ['Irritated','Breakout','Rare','Absorbs fast']),
+    ("Texture?", ['Rough','Mixed','Smooth','Oily']),
+    ("Blotting?", ['A lot','T-zone','Little','Dry'])
 ]
 
-# ── UI ───────────────────────────────────────────────────────────
+# ── UI ─────────────────────────────────────────────
 st.title("🧴 Skin Type Analyzer")
-st.markdown("✨ AI + Quiz combined analysis")
+st.markdown("AI + Quiz Analysis")
 
 # IMAGE
-st.subheader("📸 Upload Face Image")
-img_file = st.file_uploader("Upload", type=["jpg", "png"])
+img_file = st.file_uploader("Upload Face Image", type=["jpg","png"])
 
-image_result = None
-image_conf = None
+image_result, image_conf = None, None
 
 if img_file:
     img = Image.open(img_file)
     st.image(img, width=200)
 
     if model:
-        with st.spinner("Analyzing with AI..."):
+        with st.spinner("AI analyzing..."):
             image_result, image_conf = analyze_image(img)
 
 # QUIZ
@@ -247,36 +172,39 @@ for i, (q, opts) in enumerate(QUESTIONS):
         all_answered = False
 
 # BUTTON
-analyze = st.button("🔍 Analyze", disabled=not all_answered)
+if st.button("🔍 Analyze", disabled=not all_answered):
 
-# RESULT
-if analyze:
     quiz_type, percentages, confidence = classify_skin(answers)
 
-    # FINAL DECISION
-    final_type = quiz_type
+    # SMART COMBINE
     if image_result:
-        final_type = image_result
+        if image_conf > 70:
+            final_type = image_result
+        else:
+            final_type = quiz_type
+    else:
+        final_type = quiz_type
 
-    # RESULT BOX
+    # RESULT
     st.markdown(f"""
     <div class="result-box">
-        <h2>✨ {final_type} Skin</h2>
+        <h2>{final_type} Skin</h2>
         <p>Confidence: {confidence}%</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # AI vs Quiz
-    st.markdown("### 🤖 Analysis Breakdown")
-    st.write(f"Quiz Result: {quiz_type} ({confidence}%)")
+    # CHART
+    st.subheader("📊 Skin Score")
+    st.bar_chart(percentages)
+
+    # BREAKDOWN
+    st.subheader("🤖 AI vs Quiz")
+    st.write(f"Quiz: {quiz_type} ({confidence}%)")
 
     if image_result:
-        st.write(f"AI Result: {image_result} ({image_conf}%)")
-        st.write(f"Final Decision: {final_type}")
-    else:
-        st.write("AI model not available")
+        st.write(f"AI: {image_result} ({image_conf}%)")
 
     # PRODUCTS
-    st.markdown("### 🛍️ Recommended Products")
+    st.subheader("🛍️ Recommended Products")
     for p in PRODUCTS[final_type]:
-        st.markdown(f"- {p}")
+        st.write(f"- {p}")
