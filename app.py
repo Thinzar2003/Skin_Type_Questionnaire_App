@@ -1,7 +1,13 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-from tensorflow.keras.models import load_model
+import os
+
+# Optional TensorFlow import (safe)
+try:
+    from tensorflow.keras.models import load_model
+except:
+    load_model = None
 
 # ── PAGE CONFIG ───────────────────────────────────────────────────
 st.set_page_config(
@@ -22,35 +28,40 @@ h1, h2 {
     font-family: 'DM Serif Display', serif;
 }
 .main { background-color: #fdf8f4; }
+
 .stButton > button {
     background: #2d2d2d;
     color: white;
     border-radius: 8px;
     width: 100%;
 }
+
 .result-box {
     background: white;
     padding: 2rem;
     border-radius: 16px;
-    border-left: 5px solid;
+    border-left: 5px solid #2d2d2d;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
 }
 </style>
 ''', unsafe_allow_html=True)
 
-# ── LOAD AI MODEL ─────────────────────────────────────────────────
+# ── LOAD MODEL ───────────────────────────────────────────────────
 @st.cache_resource
 def load_cnn():
-    try:
-        return load_model("skin_model.h5")
-    except:
+    if load_model is None:
         return None
+
+    if os.path.exists("skin_model.h5"):
+        return load_model("skin_model.h5")
+    return None
 
 model = load_cnn()
 
 # ── AI IMAGE ANALYSIS ─────────────────────────────────────────────
 def analyze_image(img):
     if model is None:
-        return None
+        return None, None
 
     img = img.resize((224, 224))
     img = np.array(img) / 255.0
@@ -59,7 +70,10 @@ def analyze_image(img):
     pred = model.predict(img)
     classes = ["Dry", "Normal", "Oily", "Combination"]
 
-    return classes[np.argmax(pred)]
+    idx = np.argmax(pred)
+    confidence = round(float(np.max(pred)) * 100, 1)
+
+    return classes[idx], confidence
 
 # ── QUIZ SCORING ─────────────────────────────────────────────────
 def classify_skin(answers):
@@ -129,10 +143,26 @@ def classify_skin(answers):
 
 # ── PRODUCTS ─────────────────────────────────────────────────────
 PRODUCTS = {
-    "Dry": ["CeraVe Moisturizing Cream", "Cetaphil Cleanser", "Hyaluronic Acid Serum"],
-    "Oily": ["La Roche-Posay Effaclar", "Niacinamide Serum", "Biore UV Sunscreen"],
-    "Normal": ["Neutrogena Hydro Boost", "Simple Face Wash", "Anessa Sunscreen"],
-    "Combination": ["COSRX Cleanser", "Some By Mi Toner", "Laneige Cream"]
+    "Dry": [
+        "CeraVe Moisturizing Cream",
+        "La Roche-Posay Hydrating Cleanser",
+        "The Ordinary Hyaluronic Acid"
+    ],
+    "Oily": [
+        "The Ordinary Niacinamide 10%",
+        "COSRX Salicylic Cleanser",
+        "Biore UV Aqua Rich SPF"
+    ],
+    "Normal": [
+        "Neutrogena Hydro Boost",
+        "Cetaphil Gentle Cleanser",
+        "Innisfree Green Tea Serum"
+    ],
+    "Combination": [
+        "Laneige Water Bank Cream",
+        "COSRX Low pH Cleanser",
+        "Some By Mi Toner"
+    ]
 }
 
 # ── QUESTIONS ────────────────────────────────────────────────────
@@ -171,38 +201,40 @@ QUESTIONS = [
         'Often gets irritated or red',
         'Sometimes breaks out',
         'Rarely reacts',
-        'Absorbs products quickly'
+        'Absorbs products quickly, needs more'
     ]),
     ("Texture?", [
         'Rough, flaky or tight',
-        'Combination areas',
-        'Smooth and balanced',
-        'Oily and shiny'
+        'Smooth in some areas, oily in others',
+        'Smooth and balanced overall',
+        'Consistently shiny and greasy'
     ]),
     ("Blotting paper?", [
-        'A lot of oil',
-        'T-zone only',
+        'A lot of oil all over',
+        'Oil mainly from T-zone',
         'Very little oil',
-        'Dry'
+        'Almost nothing, skin is dry'
     ])
 ]
 
 # ── UI ───────────────────────────────────────────────────────────
 st.title("🧴 Skin Type Analyzer")
-st.markdown("AI + Quiz combined analysis")
+st.markdown("✨ AI + Quiz combined analysis")
 
 # IMAGE
-st.subheader("📸 Upload Image")
+st.subheader("📸 Upload Face Image")
 img_file = st.file_uploader("Upload", type=["jpg", "png"])
 
 image_result = None
+image_conf = None
+
 if img_file:
     img = Image.open(img_file)
     st.image(img, width=200)
 
     if model:
-        with st.spinner("AI analyzing..."):
-            image_result = analyze_image(img)
+        with st.spinner("Analyzing with AI..."):
+            image_result, image_conf = analyze_image(img)
 
 # QUIZ
 answers = []
@@ -221,21 +253,30 @@ analyze = st.button("🔍 Analyze", disabled=not all_answered)
 if analyze:
     quiz_type, percentages, confidence = classify_skin(answers)
 
+    # FINAL DECISION
     final_type = quiz_type
     if image_result:
         final_type = image_result
 
-    st.markdown(f"## Result: {final_type}")
-    st.markdown(f"**Confidence: {confidence}%**")
+    # RESULT BOX
+    st.markdown(f"""
+    <div class="result-box">
+        <h2>✨ {final_type} Skin</h2>
+        <p>Confidence: {confidence}%</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown("### 🤖 AI Decision")
+    # AI vs Quiz
+    st.markdown("### 🤖 Analysis Breakdown")
+    st.write(f"Quiz Result: {quiz_type} ({confidence}%)")
+
     if image_result:
-        st.write(f"Quiz: {quiz_type}")
-        st.write(f"Image AI: {image_result}")
-        st.write(f"Final: {final_type}")
+        st.write(f"AI Result: {image_result} ({image_conf}%)")
+        st.write(f"Final Decision: {final_type}")
     else:
-        st.write("Quiz only result")
+        st.write("AI model not available")
 
+    # PRODUCTS
     st.markdown("### 🛍️ Recommended Products")
     for p in PRODUCTS[final_type]:
         st.markdown(f"- {p}")
