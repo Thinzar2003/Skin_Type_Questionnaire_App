@@ -121,20 +121,20 @@ def classify_skin(answers):
 # ── PRODUCTS ─────────────────────────────────────────────────────
 PRODUCTS = {
     "Dry": [
-        {"name": "CeraVe Moisturizing Cream", "img": "https://i.imgur.com/1bX5QH6.jpg"},
-        {"name": "Hyaluronic Acid Serum", "img": "https://i.imgur.com/6YVZ5pM.jpg"},
+        {"name": "CeraVe Moisturizing Cream", "img": "https://m.media-amazon.com/images/I/61C9vH6pKOL._SL1500_.jpg"},
+        {"name": "Hyaluronic Acid Serum", "img": "https://m.media-amazon.com/images/I/61b3y7D0YPL._SL1500_.jpg"},
     ],
     "Oily": [
-        {"name": "Niacinamide Serum", "img": "https://i.imgur.com/W2z7K5H.jpg"},
-        {"name": "Salicylic Cleanser", "img": "https://i.imgur.com/9R9QZ7T.jpg"},
+        {"name": "Niacinamide Serum", "img": "https://m.media-amazon.com/images/I/61pJq2F1R-L._SL1500_.jpg"},
+        {"name": "Salicylic Cleanser", "img": "https://m.media-amazon.com/images/I/61t0z2sK1IL._SL1500_.jpg"},
     ],
     "Normal": [
-        {"name": "Neutrogena Hydro Boost", "img": "https://i.imgur.com/Nm3Q2kF.jpg"},
-        {"name": "Gentle Cleanser", "img": "https://i.imgur.com/7F2xZ5M.jpg"},
+        {"name": "Neutrogena Hydro Boost", "img": "https://m.media-amazon.com/images/I/71gJ9F0+YLL._SL1500_.jpg"},
+        {"name": "Gentle Cleanser", "img": "https://m.media-amazon.com/images/I/61r9K1K7E9L._SL1500_.jpg"},
     ],
     "Combination": [
-        {"name": "COSRX Cleanser", "img": "https://i.imgur.com/Vc3h1F8.jpg"},
-        {"name": "Laneige Cream", "img": "https://i.imgur.com/2x9F6Yc.jpg"},
+        {"name": "COSRX Cleanser", "img": "https://m.media-amazon.com/images/I/61K7S6K6vKL._SL1500_.jpg"},
+        {"name": "Laneige Cream", "img": "https://m.media-amazon.com/images/I/61v8mA0F5XL._SL1500_.jpg"},
     ]
 }
 
@@ -241,7 +241,7 @@ for i, q in enumerate(QUESTIONS):
         all_answered = False
 
 # BUTTON + RESULT
-if st.button("🔍 Analyze", disabled=not all_answered):
+if st.button("🔍 Analyze"):
 
     skin_type, percentages = classify_skin(answers)
 
