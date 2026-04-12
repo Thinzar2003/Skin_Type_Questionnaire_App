@@ -38,12 +38,6 @@ h1, h2, h3 {
     box-shadow: 0 4px 24px rgba(0,0,0,0.08);
     border-left: 5px solid;
 }
-
-.score-bar {
-    height: 8px;
-    border-radius: 4px;
-    margin: 4px 0 12px 0;
-}
 </style>
 ''', unsafe_allow_html=True)
 
@@ -59,81 +53,64 @@ def analyze_image(img):
     else:
         return "Normal"
 
-# ── ORIGINAL SCORING ─────────────────────────────────────────────
+# ── SCORING ──────────────────────────────────────────────────────
 def classify_skin(answers):
     scores = {'Dry': 0, 'Normal': 0, 'Oily': 0, 'Combination': 0}
 
-    q1_map = {
-        'Very tight and uncomfortable': {'Dry': 3},
-        'Slightly tight': {'Dry': 2, 'Normal': 1},
-        'Comfortable and balanced': {'Normal': 3},
-        'Fine, no particular feeling': {'Normal': 2, 'Oily': 1},
-    }
-    for k, v in q1_map.get(answers[0], {}).items():
-        scores[k] += v
+    maps = [
+        {
+            'Very tight and uncomfortable': {'Dry': 3},
+            'Slightly tight': {'Dry': 2, 'Normal': 1},
+            'Comfortable and balanced': {'Normal': 3},
+            'Fine, no particular feeling': {'Normal': 2, 'Oily': 1},
+        },
+        {
+            'Very shiny all over': {'Oily': 3},
+            'Shiny only on forehead, nose, chin (T-zone)': {'Combination': 3},
+            'Still looks the same as morning': {'Normal': 3},
+            'Feels drier and tighter': {'Dry': 3},
+        },
+        {
+            'Frequently, all over face': {'Oily': 2},
+            'Occasionally, mainly T-zone': {'Combination': 2},
+            'Rarely': {'Normal': 2},
+            'Almost never, but skin feels flaky': {'Dry': 2},
+        },
+        {
+            'Very dry, flaky or itchy': {'Dry': 3},
+            'Slightly dry in some areas': {'Combination': 2, 'Dry': 1},
+            'Normal, no issues': {'Normal': 3},
+            'Gets oily quickly': {'Oily': 3},
+        },
+        {
+            'Large and visible, especially on nose': {'Oily': 2, 'Combination': 1},
+            'Visible only on T-zone': {'Combination': 3},
+            'Small and barely visible': {'Normal': 2, 'Dry': 1},
+            'Very small, skin looks tight': {'Dry': 2},
+        },
+        {
+            'Often gets irritated or red': {'Dry': 2},
+            'Sometimes breaks out': {'Oily': 1, 'Combination': 1},
+            'Rarely reacts': {'Normal': 2},
+            'Absorbs products quickly, needs more': {'Oily': 2},
+        },
+        {
+            'Rough, flaky or tight': {'Dry': 3},
+            'Smooth in some areas, oily in others': {'Combination': 3},
+            'Smooth and balanced overall': {'Normal': 3},
+            'Consistently shiny and greasy': {'Oily': 3},
+        },
+        {
+            'A lot of oil all over': {'Oily': 3},
+            'Oil mainly from T-zone': {'Combination': 3},
+            'Very little oil': {'Normal': 2},
+            'Almost nothing, skin is dry': {'Dry': 3},
+        }
+    ]
 
-    q2_map = {
-        'Very shiny all over': {'Oily': 3},
-        'Shiny only on forehead, nose, chin (T-zone)': {'Combination': 3},
-        'Still looks the same as morning': {'Normal': 3},
-        'Feels drier and tighter': {'Dry': 3},
-    }
-    for k, v in q2_map.get(answers[1], {}).items():
-        scores[k] += v
-
-    q3_map = {
-        'Frequently, all over face': {'Oily': 2},
-        'Occasionally, mainly T-zone': {'Combination': 2},
-        'Rarely': {'Normal': 2},
-        'Almost never, but skin feels flaky': {'Dry': 2},
-    }
-    for k, v in q3_map.get(answers[2], {}).items():
-        scores[k] += v
-
-    q4_map = {
-        'Very dry, flaky or itchy': {'Dry': 3},
-        'Slightly dry in some areas': {'Combination': 2, 'Dry': 1},
-        'Normal, no issues': {'Normal': 3},
-        'Gets oily quickly': {'Oily': 3},
-    }
-    for k, v in q4_map.get(answers[3], {}).items():
-        scores[k] += v
-
-    q5_map = {
-        'Large and visible, especially on nose': {'Oily': 2, 'Combination': 1},
-        'Visible only on T-zone': {'Combination': 3},
-        'Small and barely visible': {'Normal': 2, 'Dry': 1},
-        'Very small, skin looks tight': {'Dry': 2},
-    }
-    for k, v in q5_map.get(answers[4], {}).items():
-        scores[k] += v
-
-    q6_map = {
-        'Often gets irritated or red': {'Dry': 2},
-        'Sometimes breaks out': {'Oily': 1, 'Combination': 1},
-        'Rarely reacts': {'Normal': 2},
-        'Absorbs products quickly, needs more': {'Oily': 2},
-    }
-    for k, v in q6_map.get(answers[5], {}).items():
-        scores[k] += v
-
-    q7_map = {
-        'Rough, flaky or tight': {'Dry': 3},
-        'Smooth in some areas, oily in others': {'Combination': 3},
-        'Smooth and balanced overall': {'Normal': 3},
-        'Consistently shiny and greasy': {'Oily': 3},
-    }
-    for k, v in q7_map.get(answers[6], {}).items():
-        scores[k] += v
-
-    q8_map = {
-        'A lot of oil all over': {'Oily': 3},
-        'Oil mainly from T-zone': {'Combination': 3},
-        'Very little oil': {'Normal': 2},
-        'Almost nothing, skin is dry': {'Dry': 3},
-    }
-    for k, v in q8_map.get(answers[7], {}).items():
-        scores[k] += v
+    for i, answer in enumerate(answers):
+        for k, v in maps[i].get(answer, {}).items():
+            scores[k] += v
 
     total = sum(scores.values())
     percentages = {k: round(v/total*100, 1) for k, v in scores.items()}
@@ -141,11 +118,58 @@ def classify_skin(answers):
 
     return skin_type, percentages
 
+# ── PRODUCTS ─────────────────────────────────────────────────────
+PRODUCTS = {
+    "Dry": [
+        {"name": "CeraVe Moisturizing Cream", "img": "https://i.imgur.com/1bX5QH6.jpg"},
+        {"name": "Hyaluronic Acid Serum", "img": "https://i.imgur.com/6YVZ5pM.jpg"},
+    ],
+    "Oily": [
+        {"name": "Niacinamide Serum", "img": "https://i.imgur.com/W2z7K5H.jpg"},
+        {"name": "Salicylic Cleanser", "img": "https://i.imgur.com/9R9QZ7T.jpg"},
+    ],
+    "Normal": [
+        {"name": "Neutrogena Hydro Boost", "img": "https://i.imgur.com/Nm3Q2kF.jpg"},
+        {"name": "Gentle Cleanser", "img": "https://i.imgur.com/7F2xZ5M.jpg"},
+    ],
+    "Combination": [
+        {"name": "COSRX Cleanser", "img": "https://i.imgur.com/Vc3h1F8.jpg"},
+        {"name": "Laneige Cream", "img": "https://i.imgur.com/2x9F6Yc.jpg"},
+    ]
+}
+
+# ── QUESTIONS ────────────────────────────────────────────────────
+QUESTIONS = [
+    {'q': 'How does your skin feel about 1 hour after washing?',
+     'opts': ['Very tight and uncomfortable','Slightly tight','Comfortable and balanced','Fine, no particular feeling']},
+
+    {'q': 'By midday, how does your skin look?',
+     'opts': ['Very shiny all over','Shiny only on forehead, nose, chin (T-zone)','Still looks the same as morning','Feels drier and tighter']},
+
+    {'q': 'How often do you get breakouts?',
+     'opts': ['Frequently, all over face','Occasionally, mainly T-zone','Rarely','Almost never, but skin feels flaky']},
+
+    {'q': 'How does your skin feel without moisturizer?',
+     'opts': ['Very dry, flaky or itchy','Slightly dry in some areas','Normal, no issues','Gets oily quickly']},
+
+    {'q': 'How are your pores?',
+     'opts': ['Large and visible, especially on nose','Visible only on T-zone','Small and barely visible','Very small, skin looks tight']},
+
+    {'q': 'How does your skin react to products?',
+     'opts': ['Often gets irritated or red','Sometimes breaks out','Rarely reacts','Absorbs products quickly, needs more']},
+
+    {'q': 'How is your skin texture?',
+     'opts': ['Rough, flaky or tight','Smooth in some areas, oily in others','Smooth and balanced overall','Consistently shiny and greasy']},
+
+    {'q': 'How much oil appears on blotting paper?',
+     'opts': ['A lot of oil all over','Oil mainly from T-zone','Very little oil','Almost nothing, skin is dry']}
+]
+
 # ── UI ────────────────────────────────────────────────────────────
 st.title('🧴 Skin Type Analyzer AI')
 st.markdown('*Answer questions + upload image for smarter result*')
 
-# IMAGE UPLOAD
+# IMAGE
 st.subheader("📸 Upload Image (Optional)")
 img_file = st.file_uploader("Upload face image", type=["jpg","png","jpeg"])
 
@@ -158,19 +182,7 @@ if img_file:
 
 st.divider()
 
-# QUESTIONS
-QUESTIONS = [
-    {
-        'q': 'How does your skin feel about 1 hour after washing?',
-        'opts': [
-            'Very tight and uncomfortable',
-            'Slightly tight',
-            'Comfortable and balanced',
-            'Fine, no particular feeling',
-        ]
-    },
-]*8
-
+# QUESTIONS UI
 answers = []
 all_answered = True
 
@@ -180,17 +192,43 @@ for i, q in enumerate(QUESTIONS):
     if ans is None:
         all_answered = False
 
-# BUTTON
+# ANALYZE BUTTON
 if st.button("🔍 Analyze", disabled=not all_answered):
 
     skin_type, percentages = classify_skin(answers)
 
-    # 🔥 AI Fusion
+    # AI Fusion
     if image_result:
-        percentages[image_result] += 10
+        for k in percentages:
+            if k == image_result:
+                percentages[k] += 10
+            else:
+                percentages[k] = max(0, percentages[k] - 2)
+
         skin_type = max(percentages, key=percentages.get)
 
-    st.subheader(f"✨ Result: {skin_type}")
+    # RESULT
+    st.markdown(f"""
+    <div class="result-box">
+        <h2>✨ {skin_type} Skin</h2>
+    </div>
+    """, unsafe_allow_html=True)
 
-    for k,v in percentages.items():
+    st.progress(percentages[skin_type] / 100)
+
+    # TEXT
+    for k, v in percentages.items():
         st.write(f"{k}: {v}%")
+
+    # CHART
+    st.subheader("📊 Skin Score Chart")
+    st.bar_chart(percentages)
+
+    # PRODUCTS
+    st.subheader("🛍️ Recommended Products")
+
+    cols = st.columns(2)
+    for i, product in enumerate(PRODUCTS[skin_type]):
+        with cols[i % 2]:
+            st.image(product["img"], use_container_width=True)
+            st.caption(product["name"])
