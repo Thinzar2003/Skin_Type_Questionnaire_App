@@ -156,15 +156,80 @@ if img_file:
 st.divider()
 
 # QUESTIONS
-QUESTIONS = [{
-    'q': 'How does your skin feel about 1 hour after washing?',
-    'opts': [
-        'Very tight and uncomfortable',
-        'Slightly tight',
-        'Comfortable and balanced',
-        'Fine, no particular feeling',
-    ]
-}]*8
+QUESTIONS = [
+    {
+        'q': 'How does your skin feel about 1 hour after washing?',
+        'opts': [
+            'Very tight and uncomfortable',
+            'Slightly tight',
+            'Comfortable and balanced',
+            'Fine, no particular feeling',
+        ]
+    },
+    {
+        'q': 'By midday, how does your skin look?',
+        'opts': [
+            'Very shiny all over',
+            'Shiny only on forehead, nose, chin (T-zone)',
+            'Still looks the same as morning',
+            'Feels drier and tighter',
+        ]
+    },
+    {
+        'q': 'How often do you get breakouts?',
+        'opts': [
+            'Frequently, all over face',
+            'Occasionally, mainly T-zone',
+            'Rarely',
+            'Almost never, but skin feels flaky',
+        ]
+    },
+    {
+        'q': 'How does your skin feel without moisturizer?',
+        'opts': [
+            'Very dry, flaky or itchy',
+            'Slightly dry in some areas',
+            'Normal, no issues',
+            'Gets oily quickly',
+        ]
+    },
+    {
+        'q': 'How are your pores?',
+        'opts': [
+            'Large and visible, especially on nose',
+            'Visible only on T-zone',
+            'Small and barely visible',
+            'Very small, skin looks tight',
+        ]
+    },
+    {
+        'q': 'How does your skin react to products?',
+        'opts': [
+            'Often gets irritated or red',
+            'Sometimes breaks out',
+            'Rarely reacts',
+            'Absorbs products quickly, needs more',
+        ]
+    },
+    {
+        'q': 'How is your skin texture?',
+        'opts': [
+            'Rough, flaky or tight',
+            'Smooth in some areas, oily in others',
+            'Smooth and balanced overall',
+            'Consistently shiny and greasy',
+        ]
+    },
+    {
+        'q': 'How much oil appears on blotting paper?',
+        'opts': [
+            'A lot of oil all over',
+            'Oil mainly from T-zone',
+            'Very little oil',
+            'Almost nothing, skin is dry',
+        ]
+    }
+]
 
 answers = []
 all_answered = True
