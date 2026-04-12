@@ -133,7 +133,7 @@ PRODUCTS = {
         {"name": "Gentle Cleanser", "img": "https://m.media-amazon.com/images/I/61r9K1K7E9L._SL1500_.jpg"},
     ],
     "Combination": [
-        {"name": "COSRX Cleanser", "img": "https://m.media-amazon.com/images/I/61K7S6K6vKL._SL1500_.jpg"},
+        {"name": "COSRX Cleanser", "img": "https://m.media-amazon.com/images/I/71wypo2O-WL._AC_UF1000,1000_QL80_.jpg"},
         {"name": "Laneige Cream", "img": "https://m.media-amazon.com/images/I/61v8mA0F5XL._SL1500_.jpg"},
     ]
 }
