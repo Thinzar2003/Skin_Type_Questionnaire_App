@@ -44,26 +44,22 @@ def get_trained_model():
 def generate_ai_report(skin_type, confidence, answers):
     try:
         api_key = st.secrets.get("GEMINI_API_KEY")
-        if not api_key:
-            return "Error: API Key missing in Secrets."
-            
         genai.configure(api_key=api_key)
         
-        # Use the full model path to resolve the 404 error
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
-        
-        prompt = f"""
-        Act as a professional Dermatologist. 
-        Result: {skin_type} skin ({confidence}% confidence).
-        User Data: {answers}.
-        
-        Provide a biological explanation, a 3-step routine, and a brief Thai summary.
-        """
-        
-        response = model.generate_content(prompt)
-        return response.text
+        # Try Flash first
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            prompt = f"Act as a Dermatologist. Analysis: {skin_type}. Confidence: {confidence}%."
+            response = model.generate_content(prompt)
+            return response.text
+        except:
+            # Fallback to Pro if Flash is 404
+            model = genai.GenerativeModel('gemini-1.5-pro')
+            response = model.generate_content(prompt)
+            return response.text
+            
     except Exception as e:
-        return f"AI engine error: {str(e)}"
+        return f"System Error: {str(e)}"
 
 # ── 4. UI STYLING ──────────────────────────────────────────────────
 st.markdown('''
