@@ -101,15 +101,13 @@ for i, (q, opts) in enumerate(QUESTIONS):
     choice = st.selectbox(f"Q{i+1}: {q}", options=[None] + opts, index=0)
     user_inputs.append(choice)
 
+# Replace the report-card display part in your code with this:
 if st.button('🚀 Execute Hybrid AI Analysis'):
     if None in user_inputs:
         st.warning("Please answer all questions.")
     else:
-        with st.spinner('Running Inference...'):
-            encoded_inputs = np.array([VAL_MAP[ans] for ans in user_inputs]).reshape(1, -1)
-            clf = get_trained_model()
-            prediction = clf.predict(encoded_inputs)[0]
-            confidence = round(np.max(clf.predict_proba(encoded_inputs)) * 100, 2)
+        with st.spinner('Consulting AI Experts...'):
+            # ... (your existing ML logic here) ...
             
             ai_report = generate_ai_report(prediction, confidence, user_inputs)
             
@@ -117,5 +115,8 @@ if st.button('🚀 Execute Hybrid AI Analysis'):
             c1, c2 = st.columns(2)
             c1.metric("Clinical Type", prediction)
             c2.metric("ML Confidence", f"{confidence}%")
-            st.markdown(f'<div style="background-color: #f9f9f9; padding: 20px; border-radius: 10px; border-left: 5px solid #2d2d2d;"><h3>📋 Expert System Report</h3>{ai_report}</div>', unsafe_allow_html=True)
+            
+            # Use a simpler markdown block to avoid "white text on white background" issues
+            st.subheader("📋 Expert System Report")
+            st.info(ai_report) # This uses Streamlit's built-in styling which is safer
             st.balloons()
