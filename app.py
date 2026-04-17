@@ -7,9 +7,10 @@ from huggingface_hub import InferenceClient
 import joblib
 import os
 
-# ── 1. CONFIG ─────────────────────────────────────────────────────
+# ── 1. CONFIG & API SETUP ─────────────────────────────────────────
 st.set_page_config(page_title='AI Skin Analyzer Pro', page_icon='🧴', layout='centered')
 
+# Get secrets from the TOML configuration
 api_key = st.secrets.get("GEMINI_API_KEY")
 hf_token = st.secrets.get("HF_TOKEN")
 
@@ -36,12 +37,13 @@ QUESTIONS = [
     ("Tissue test result?", ['A lot of oil all over', 'Oil mainly from T-zone', 'Very little oil', 'Almost nothing, skin is dry'])
 ]
 
-# ── 3. ML MODEL ENGINE ────────────────────────────────────────────
+# ── 3. MACHINE LEARNING ENGINE (Local Random Forest) ─────────────
 def get_trained_model():
     model_filename = 'skin_model.pkl'
     if os.path.exists(model_filename):
         return joblib.load(model_filename)
     
+    # Synthetic Data for Academic Demonstration
     data = []
     labels = ['Dry', 'Normal', 'Oily', 'Combination']
     for _ in range(500):
@@ -59,73 +61,74 @@ def get_trained_model():
     joblib.dump(model, model_filename)
     return model
 
-# ── 4. MULTI-MODEL LLM ENGINE ─────────────────────────────────────
+# ── 4. MULTI-MODEL LLM LOGIC (Gemini & HF Failover) ──────────────
 def generate_ai_report(skin_type, confidence, answers):
     prompt = f"""
-    Act as a professional Dermatologist for an academic project. 
-    Analysis: {skin_type} skin ({confidence}% confidence).
-    Data: {answers}.
-    Provide a biological explanation, 3-step routine, and a Thai summary.
+    Act as a professional Dermatologist. 
+    Analysis: {skin_type} skin ({confidence}% ML confidence).
+    User Data: {answers}.
+    
+    Please provide:
+    1. A biological explanation of this result.
+    2. A suggested AM/PM routine.
+    3. Recommended ingredients.
+    4. A summary of this advice in Thai (ภาษาไทย).
     """
     
-    # Try Gemini First
+    # 1. Try Gemini
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
         return f"**[Engine: Google Gemini]**\n\n{response.text}"
     except Exception:
-        # Fallback to Hugging Face
+        # 2. Fallback to Hugging Face
         try:
             hf_client = InferenceClient(api_key=hf_token)
             hf_response = hf_client.chat.completions.create(
                 model="mistralai/Mistral-7B-Instruct-v0.3",
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=800
+                max_tokens=1000
             )
-            return f"**[Engine: Hugging Face Backup]**\n\n{hf_response.choices[0].message.content}"
+            return f"**[Engine: Hugging Face Failover]**\n\n{hf_response.choices[0].message.content}"
         except Exception as e:
-            return f"Service currently unavailable. Classification: {skin_type}."
+            return f"AI Consultation is offline. **Classification Result: {skin_type}.**"
 
 # ── 5. USER INTERFACE ─────────────────────────────────────────────
-st.title('🧴 AI Skin Type Research Pro')
-st.info('**Architecture:** Hybrid ML (Random Forest) + Multi-Model LLM (Gemini/Mistral)')
+st.title('🧴 AI Skin Analyzer Pro')
+st.markdown("---")
 
 user_inputs = []
 for i, (q, opts) in enumerate(QUESTIONS):
-    choice = st.selectbox(f"Q{i+1}: {q}", options=[None] + opts, key=f"q{i}")
+    choice = st.selectbox(f"Q{i+1}: {q}", options=[None] + opts, key=f"quest_{i}")
     user_inputs.append(choice)
 
 if st.button('🚀 Execute Hybrid AI Analysis'):
     if None in user_inputs:
-        st.warning("Please complete all questions first.")
+        st.warning("Please complete all questions for the Random Forest model.")
     else:
-        # INITIALIZE VARIABLES to prevent NameError
-        prediction = "Unknown"
-        confidence = 0.0
-        
-        with st.spinner('Synchronizing AI Models...'):
+        with st.spinner('Synchronizing Data Models...'):
             try:
-                # 1. Run Local ML
+                # Local ML Inference
                 encoded_inputs = np.array([VAL_MAP[ans] for ans in user_inputs]).reshape(1, -1)
                 clf = get_trained_model()
                 prediction = clf.predict(encoded_inputs)[0]
                 confidence = round(np.max(clf.predict_proba(encoded_inputs)) * 100, 1)
                 
-                # 2. Call Generative AI
+                # Generative AI Consultation
                 ai_report = generate_ai_report(prediction, confidence, user_inputs)
                 
-                # 3. Display Results
+                # Visualizing Results
                 st.success("Analysis Complete")
-                col1, col2 = st.columns(2)
-                col1.metric("Clinical Type", prediction)
-                col2.metric("ML Confidence", f"{confidence}%")
+                c1, c2 = st.columns(2)
+                c1.metric("Clinical Type", prediction)
+                c2.metric("ML Confidence", f"{confidence}%")
                 
                 st.markdown("---")
                 st.subheader("📋 Expert System Report")
                 st.write(ai_report)
                 st.balloons()
             except Exception as e:
-                st.error(f"Logic Error: {str(e)}")
+                st.error(f"Logic Error: {e}")
 
 st.divider()
-st.caption("Developed by Thinzar Su Hlaing | Faculty of Data Science | 2026")
+st.caption("Developed by Thinzar Su Hlaing | Faculty of Data Science | Academic Portfolio 2026")
