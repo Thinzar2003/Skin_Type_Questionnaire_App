@@ -1,5 +1,6 @@
 streamlit
 google-genai
+huggingface_hub
 scikit-learn
 pandas
 numpy
