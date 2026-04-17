@@ -1,7 +1,8 @@
 streamlit
+numpy
+pandas
+scikit-learn
 google-genai
 huggingface_hub
-scikit-learn
-pandas
-numpy
 joblib
+matplotlib
