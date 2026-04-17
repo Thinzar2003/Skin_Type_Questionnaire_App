@@ -11,7 +11,7 @@ st.set_page_config(page_title='AI Skin Analyzer Pro', page_icon='🧴', layout='
 
 # Access the API Key securely from Streamlit Secrets
 if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["AQ.Ab8RN6KfgihTts6mlJXryK_7_o63IRqlAWKzxcVjyqA_84JqtA"])
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
     st.error("Missing Gemini API Key. Please add it to Streamlit Secrets.")
 
