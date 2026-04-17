@@ -67,30 +67,29 @@ def generate_ai_report(skin_type, confidence, answers):
     Act as a professional Dermatologist. 
     Analysis: {skin_type} skin ({confidence}% ML confidence).
     User Data: {answers}.
-    
-    Please provide:
-    1. A biological explanation of this result.
-    2. A suggested AM/PM routine.
-    3. Recommended ingredients.
-    4. A summary of this advice in Thai (ภาษาไทย).
+    Please provide: 1. Explanation, 2. Routine, 3. Summary in Thai.
     """
     
-    # 1. Try Gemini
+    # 1. Try Gemini 
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
         return f"**[Engine: Google Gemini]**\n\n{response.text}"
-    except Exception:
-        # 2. Fallback to Hugging Face
+    except Exception as gemini_e:
+        # 2. Fallback to Hugging Face with a more stable model name
         try:
             hf_client = InferenceClient(api_key=hf_token)
+            # Changed model string to a very high-availability version
             hf_response = hf_client.chat.completions.create(
-                model="mistralai/Mistral-7B-Instruct-v0.3",
+                model="mistralai/Mistral-7B-Instruct-v0.2", 
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=1000
+                max_tokens=700
             )
             return f"**[Engine: Hugging Face Failover]**\n\n{hf_response.choices[0].message.content}"
-        except Exception as e:
+        except Exception as hf_e:
+            # This helps you debug in the Streamlit "Manage App" logs
+            print(f"Gemini Error: {gemini_e}")
+            print(f"HF Error: {hf_e}")
             return f"AI Consultation is offline. **Classification Result: {skin_type}.**"
 
 # ── 5. USER INTERFACE ─────────────────────────────────────────────
