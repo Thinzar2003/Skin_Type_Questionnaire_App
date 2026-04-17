@@ -10,10 +10,22 @@ import os
 st.set_page_config(page_title='AI Skin Analyzer Pro', page_icon='🧴', layout='centered')
 
 # Access the API Key securely from Streamlit Secrets
-if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+api_key = st.secrets.get("GEMINI_API_KEY")
+
+if api_key:
+    genai.configure(api_key=api_key)
 else:
     st.error("Missing Gemini API Key. Please add it to Streamlit Secrets.")
+
+# Diagnostic Tool in Sidebar
+with st.sidebar:
+    st.header("System Settings")
+    if st.button('🛠️ Run System Diagnostic'):
+        try:
+            models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            st.success(f"Connected! Available models: {models}")
+        except Exception as e:
+            st.error(f"Connection failed: {e}")
 
 # ── 2. AI MODEL LOGIC (PREDICTIVE) ────────────────────────────────
 def get_trained_model():
@@ -43,20 +55,38 @@ def get_trained_model():
 # ── 3. GENERATIVE AI LOGIC (CONSULTATION) ──────────────────────────
 def generate_ai_report(skin_type, confidence, answers):
     try:
-        api_key = st.secrets.get("GEMINI_API_KEY")
-        genai.configure(api_key=api_key)
+        # Define the primary prompt
+        prompt = f"""
+        Act as a professional Dermatologist for an academic research project. 
+        Analysis Result: {skin_type} skin ({confidence}% confidence).
+        User Responses: {answers}.
         
-        # Try Flash first
-        try:
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
-            prompt = f"Act as a Dermatologist. Analysis: {skin_type}. Confidence: {confidence}%."
-            response = model.generate_content(prompt)
-            return response.text
-        except:
-            # Fallback to Pro if Flash is 404
-            model = genai.GenerativeModel('gemini-1.5-pro')
-            response = model.generate_content(prompt)
-            return response.text
+        Provide:
+        1. Biological explanation of this skin type.
+        2. 3-step morning and evening protocol.
+        3. Recommended chemical active ingredients.
+        4. A brief summary of advice in Thai.
+        """
+
+        # Try multiple model name variants to resolve 404 errors
+        model_names = [
+            'gemini-1.5-flash-latest', 
+            'models/gemini-1.5-flash', 
+            'gemini-1.5-pro',
+            'models/gemini-pro'
+        ]
+        
+        last_error = ""
+        for name in model_names:
+            try:
+                model = genai.GenerativeModel(name)
+                response = model.generate_content(prompt)
+                return response.text
+            except Exception as e:
+                last_error = str(e)
+                continue # Try the next model name
+        
+        return f"Model Error: All attempts failed. Last error: {last_error}"
             
     except Exception as e:
         return f"System Error: {str(e)}"
