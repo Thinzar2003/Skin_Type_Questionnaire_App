@@ -43,30 +43,26 @@ def get_trained_model():
 # ── 3. GENERATIVE AI LOGIC (CONSULTATION) ──────────────────────────
 def generate_ai_report(skin_type, confidence, answers):
     try:
-        # 1. Ensure the key is loaded
         api_key = st.secrets.get("GEMINI_API_KEY")
         if not api_key:
-            return "Error: GEMINI_API_KEY not found in Streamlit Secrets."
+            return "Error: API Key missing in Secrets."
             
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # 2. Refined Academic Prompt
+        # Use the full model path to resolve the 404 error
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        
         prompt = f"""
         Act as a professional Dermatologist. 
-        Classification Result: {skin_type} skin.
-        Model Confidence: {confidence}%.
+        Result: {skin_type} skin ({confidence}% confidence).
+        User Data: {answers}.
         
-        Provide:
-        1. Biological explanation for this classification.
-        2. A 3-step skincare protocol.
-        3. A summary in Thai for the user.
+        Provide a biological explanation, a 3-step routine, and a brief Thai summary.
         """
         
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        # This will print the specific error (like 401) to your UI for debugging
         return f"AI engine error: {str(e)}"
 
 # ── 4. UI STYLING ──────────────────────────────────────────────────
