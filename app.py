@@ -63,34 +63,33 @@ def get_trained_model():
 
 # ── 4. MULTI-MODEL LLM LOGIC (Gemini & HF Failover) ──────────────
 def generate_ai_report(skin_type, confidence, answers):
-    prompt = f"""
-    Act as a professional Dermatologist. 
-    Analysis: {skin_type} skin ({confidence}% ML confidence).
-    User Data: {answers}.
-    Please provide: 1. Explanation, 2. Routine, 3. Summary in Thai.
-    """
+    prompt = f"Act as a Dermatologist. Analysis: {skin_type} ({confidence}%). Data: {answers}. Provide advice and Thai summary."
     
-    # 1. Try Gemini 
+    # --- 1. TRY GEMINI ---
     try:
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
         response = client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
         return f"**[Engine: Google Gemini]**\n\n{response.text}"
-    except Exception as gemini_e:
-        # 2. Fallback to Hugging Face with a more stable model name
+    except Exception:
+        # --- 2. TRY HUGGING FACE ---
         try:
-            hf_client = InferenceClient(api_key=hf_token)
-            # Changed model string to a very high-availability version
+            hf_client = InferenceClient(api_key=st.secrets["HF_TOKEN"])
             hf_response = hf_client.chat.completions.create(
-                model="mistralai/Mistral-7B-Instruct-v0.2", 
+                model="HuggingFaceH4/zephyr-7b-beta", # Using a highly available model
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=700
+                max_tokens=500
             )
             return f"**[Engine: Hugging Face Failover]**\n\n{hf_response.choices[0].message.content}"
-        except Exception as hf_e:
-            # This helps you debug in the Streamlit "Manage App" logs
-            print(f"Gemini Error: {gemini_e}")
-            print(f"HF Error: {hf_e}")
-            return f"AI Consultation is offline. **Classification Result: {skin_type}.**"
+        except Exception:
+            # --- 3. LOCAL EXPERT FALLBACK (Ensures the app NEVER fails) ---
+            local_database = {
+                "Normal": "Your skin is balanced. **Routine:** Gentle cleanser, light moisturizer, and SPF 30+. **Thai:** ผิวของคุณมีความสมดุลดี ควรใช้คลีนเซอร์สูตรอ่อนโยนและทากันแดดทุกวัน",
+                "Oily": "Focus on oil control. **Routine:** Salicylic acid cleanser and oil-free gel. **Thai:** ผิวมันควรเน้นการคุมมันด้วย Salicylic acid",
+                "Dry": "Prioritize the skin barrier. **Routine:** Ceramide cream and hyaluronic acid. **Thai:** ผิวแห้งควรเน้นการใช้มอยส์เจอไรเซอร์ที่มีส่วนผสมของ Ceramide",
+                "Combination": "Treat zones differently. **Routine:** Gel on T-zone, cream on cheeks. **Thai:** ผิวผสมควรดูแลแยกส่วน T-zone และแก้ม"
+            }
+            advice = local_database.get(skin_type, "Consult a specialist.")
+            return f"**[Engine: Local Expert System]**\n\n{advice}"
 
 # ── 5. USER INTERFACE ─────────────────────────────────────────────
 st.title('🧴 AI Skin Analyzer Pro')
