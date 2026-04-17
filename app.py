@@ -196,4 +196,4 @@ if st.button('🚀 RUN ADVANCED ANALYSIS'):
             except Exception as e:
                 st.error(f"System Error: {e}")
 
-st.markdown("<br><hr><center>Built for Data Science Portfolio | Tokyo 2026</center>", unsafe_allow_html=True)
+st.markdown("<br><hr><center>Developed by Thinzar Su Hlaing | Faculty of Digital Innovation Technology| Academic Portfolio 2026</center>", unsafe_allow_html=True)
