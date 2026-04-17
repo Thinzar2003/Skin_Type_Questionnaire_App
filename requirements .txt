@@ -1,5 +1,6 @@
 streamlit
+scikit-learn
+pandas
 numpy
-pillow
-tensorflow-cpu
-gdown
+google-generativeai
+joblib
