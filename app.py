@@ -6,9 +6,10 @@ from google import genai
 from huggingface_hub import InferenceClient
 import joblib
 import os
+import matplotlib.pyplot as plt
 
 # ── 1. CONFIG & PROFESSIONAL UI THEME ─────────────────────────────
-st.set_page_config(page_title='SkinAI Precision Pro', page_icon='✨', layout='centered')
+st.set_page_config(page_title='SkinAI Precision Pro: Research Edition', page_icon='🔬', layout='centered')
 
 st.markdown("""
     <style>
@@ -41,18 +42,6 @@ st.markdown("""
         transform: translateY(-2px); 
         box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
         color: white;
-    }
-
-    /* Product Tags */
-    .product-tag {
-        display: inline-block;
-        background: rgba(168, 85, 247, 0.2);
-        border: 1px solid rgba(168, 85, 247, 0.5);
-        padding: 4px 12px;
-        border-radius: 50px;
-        margin: 4px;
-        font-size: 0.85em;
-        font-weight: 500;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -103,36 +92,54 @@ LOCAL_REPORTS = {
     }
 }
 
-# ── 3. MACHINE LEARNING ENGINE ─────────────────────────────────────
+# ── 3. MACHINE LEARNING ENGINE (Research-Oriented) ──────────────────
 def get_trained_model():
     model_filename = 'skin_model.pkl'
+    feature_names = ["Wash Feel", "Midday", "Breakout", "No Moist.", "Pores", "Reaction", "Texture", "Tissue"]
+    
     if os.path.exists(model_filename):
-        return joblib.load(model_filename)
+        return joblib.load(model_filename), feature_names
     
     data = []
     labels = ['Dry', 'Normal', 'Oily', 'Combination']
-    for _ in range(500):
+    for _ in range(1000): # Increased size for better research reliability
         s_type = np.random.choice(labels)
         if s_type == 'Oily': row = [np.random.randint(2,4) for _ in range(8)]
         elif s_type == 'Dry': row = [np.random.randint(0,2) for _ in range(8)]
         else: row = [np.random.randint(0,4) for _ in range(8)]
         data.append(row + [s_type])
     
-    df = pd.DataFrame(data, columns=[f'q{i}' for i in range(8)] + ['target'])
+    df = pd.DataFrame(data, columns=feature_names + ['target'])
     X = df.drop('target', axis=1)
     y = df['target']
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X, y)
     joblib.dump(model, model_filename)
-    return model
+    return model, feature_names
 
-# ── 4. MULTI-MODEL AI LOGIC ───────────────────────────────────────
+# ── 4. RESEARCH ANALYTICS VISUALIZER ──────────────────────────────
+def plot_research_metrics(model, feature_names, input_probs, classes):
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Feature Importance (RF Weight)**")
+        importances = model.feature_importances_
+        feat_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances})
+        feat_df = feat_df.sort_values(by='Importance', ascending=True)
+        st.bar_chart(feat_df.set_index('Feature'))
+
+    with col2:
+        st.write("**Classification Probability**")
+        prob_df = pd.DataFrame({'Type': classes, 'Probability': input_probs[0]})
+        st.bar_chart(prob_df.set_index('Type'))
+
+# ── 5. MULTI-MODEL AI LOGIC ───────────────────────────────────────
 def generate_ai_report(skin_type, confidence, answers):
     prompt = f"""
     Act as a professional Dermatologist. 
     Analysis: {skin_type} skin ({confidence}% ML confidence).
     User Data: {answers}.
-    Please provide a professional explanation, a 3-step routine with specific products/emojis, and summaries in English, Japanese, and Thai.
+    Provide a professional explanation, a 3-step routine with emojis, and summaries in English, Japanese, and Thai.
     """
     
     # Try Gemini
@@ -141,7 +148,7 @@ def generate_ai_report(skin_type, confidence, answers):
         response = client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
         return response.text
     except:
-        # Try HF
+        # Try HF Failover
         try:
             hf_client = InferenceClient(api_key=st.secrets["HF_TOKEN"])
             hf_res = hf_client.chat.completions.create(
@@ -151,13 +158,13 @@ def generate_ai_report(skin_type, confidence, answers):
             )
             return hf_res.choices[0].message.content
         except:
-            # Local Fallback
+            # Local Failover
             d = LOCAL_REPORTS[skin_type]
-            return f"### 🇬🇧 English Advice\n{d['EN']}\n\n### 🇯🇵 日本語でのアドバイス\n{d['JP']}\n\n### 🇹🇭 คำแนะนำภาษาไทย\n{d['TH']}"
+            return f"### 🇬🇧 English Analysis\n{d['EN']}\n\n### 🇯🇵 日本語アドバイス\n{d['JP']}\n\n### 🇹🇭 คำแนะนำภาษาไทย\n{d['TH']}"
 
-# ── 5. MAIN UI ────────────────────────────────────────────────────
+# ── 6. MAIN UI EXECUTION ──────────────────────────────────────────
 st.title('🧴 SkinAI Precision Pro')
-st.markdown("---")
+st.caption("Hybrid ML & Generative AI for Advanced Dermatological Diagnostics")
 
 user_inputs = []
 for i, (q, opts) in enumerate(QUESTIONS):
@@ -166,34 +173,39 @@ for i, (q, opts) in enumerate(QUESTIONS):
     user_inputs.append(choice)
     st.write("")
 
-if st.button('🚀 RUN ADVANCED ANALYSIS'):
+if st.button('🚀 RUN RESEARCH-GRADE ANALYSIS'):
     if None in user_inputs:
         st.warning("Please answer all diagnostic questions.")
     else:
-        with st.spinner('Synchronizing Biometric and AI Models...'):
+        with st.spinner('Calculating Biometric Probabilities...'):
             try:
-                # ML Inference
+                # 1. ML Logic
                 encoded = np.array([VAL_MAP[ans] for ans in user_inputs]).reshape(1, -1)
-                clf = get_trained_model()
+                clf, feat_names = get_trained_model()
                 prediction = clf.predict(encoded)[0]
-                confidence = round(np.max(clf.predict_proba(encoded)) * 100, 1)
+                probs = clf.predict_proba(encoded)
+                confidence = round(np.max(probs) * 100, 1)
                 
-                # Report Generation
-                report = generate_ai_report(prediction, confidence, user_inputs)
-                
-                # Visuals
+                # 2. UI Display
                 st.markdown('<div class="report-card">', unsafe_allow_html=True)
                 st.subheader("📊 Diagnostic Summary")
                 c1, c2 = st.columns(2)
                 c1.metric("Predicted Type", prediction)
                 c2.metric("ML Confidence", f"{confidence}%")
                 
+                # 3. Research Visuals
                 st.markdown("---")
-                st.subheader("📋 Expert Consultation")
+                st.subheader("🔬 Model Interpretability & Research Data")
+                plot_research_metrics(clf, feat_names, probs, clf.classes_)
+                
+                # 4. Expert Report
+                st.markdown("---")
+                st.subheader("📋 Professional Consultation")
+                report = generate_ai_report(prediction, confidence, user_inputs)
                 st.write(report)
                 st.markdown('</div>', unsafe_allow_html=True)
                 st.balloons()
             except Exception as e:
-                st.error(f"System Error: {e}")
+                st.error(f"Critical System Failure: {e}")
 
-st.markdown("<br><hr><center>Developed by Thinzar Su Hlaing | Faculty of Digital Innovation Technology| Academic Portfolio 2026</center>", unsafe_allow_html=True)
+st.markdown("<br><hr><center>Developed by Thinzar Su Hlaing | Faculty of Digital Innovation Technology | Tokyo Portfolio 2026</center>", unsafe_allow_html=True)
