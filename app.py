@@ -3,16 +3,17 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from google import genai
+from huggingface_hub import InferenceClient
 import joblib
 import os
 
 # ── 1. CONFIG & SECURITY ──────────────────────────────────────────
 st.set_page_config(page_title='AI Skin Analyzer Pro', page_icon='🧴', layout='centered')
 
-# Access the API Key securely from Streamlit Secrets
 api_key = st.secrets.get("GEMINI_API_KEY")
+hf_token = st.secrets.get("HF_TOKEN")
 
-# ── 2. DATA MAPPING & QUESTIONS (FIXES THE NAMEERROR) ─────────────
+# ── 2. DATA & QUESTIONS (STAYS THE SAME) ──────────────────────────
 VAL_MAP = {
     'Very tight and uncomfortable': 0, 'Slightly tight': 1, 'Comfortable and balanced': 2, 'Fine, no particular feeling': 3,
     'Very shiny all over': 3, 'Shiny only on forehead, nose, chin (T-zone)': 2, 'Still looks the same as morning': 1, 'Feels drier and tighter': 0,
@@ -35,13 +36,12 @@ QUESTIONS = [
     ("Tissue test result?", ['A lot of oil all over', 'Oil mainly from T-zone', 'Very little oil', 'Almost nothing, skin is dry'])
 ]
 
-# ── 3. AI MODEL LOGIC (PREDICTIVE) ────────────────────────────────
+# ── 3. MACHINE LEARNING MODEL ─────────────────────────────────────
 def get_trained_model():
     model_filename = 'skin_model.pkl'
     if os.path.exists(model_filename):
         return joblib.load(model_filename)
     
-    # Synthetic dataset for Research Validation
     data = []
     labels = ['Dry', 'Normal', 'Oily', 'Combination']
     for _ in range(500):
@@ -54,44 +54,47 @@ def get_trained_model():
     df = pd.DataFrame(data, columns=[f'q{i}' for i in range(8)] + ['target'])
     X = df.drop('target', axis=1)
     y = df['target']
-    
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X, y)
     joblib.dump(model, model_filename)
     return model
 
-# ── 4. GENERATIVE AI LOGIC (GEMINI 2.0) ──────────────────────────
+# ── 4. MULTI-MODEL AI LOGIC ───────────────────────────────────────
 def generate_ai_report(skin_type, confidence, answers):
+    prompt = f"""
+    Act as a professional Dermatologist for an academic project. 
+    Analysis: {skin_type} skin ({confidence}% confidence).
+    Data: {answers}.
+    
+    Provide:
+    1. Biological explanation.
+    2. 3-step routine.
+    3. Brief summary in Thai.
+    """
+    
+    # --- Try Gemini First ---
     try:
         client = genai.Client(api_key=api_key)
-        prompt = f"""
-        Act as a professional Dermatologist. 
-        Analysis: {skin_type} skin ({confidence}% confidence).
-        User Responses: {answers}.
-        
-        Provide:
-        1. Biological explanation.
-        2. 3-step skincare routine.
-        3. Ingredients to prioritize.
-        4. Brief summary in Thai.
-        """
         response = client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
-        return response.text
+        return f"**[Google Gemini Engine]**\n\n{response.text}"
     except Exception as e:
-        return f"AI Generation Error: {str(e)}"
+        st.warning("Gemini Quota Exceeded. Switching to Hugging Face...")
+        
+        # --- Fallback to Hugging Face ---
+        try:
+            hf_client = InferenceClient(api_key=hf_token)
+            hf_response = hf_client.chat.completions.create(
+                model="mistralai/Mistral-7B-Instruct-v0.3",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=800
+            )
+            return f"**[Hugging Face Engine - Backup]**\n\n{hf_response.choices[0].message.content}"
+        except Exception as hf_e:
+            return f"All AI Engines failed. Local Result: This user has {skin_type} skin."
 
-# ── 5. UI STYLING & APPLICATION ──────────────────────────────────
-st.markdown('''
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
-    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-    .stButton>button { background-color: #2d2d2d; color: white; border-radius: 10px; height: 3.5em; width: 100%; font-weight: 700; }
-    .report-card { background-color: #ffffff; padding: 25px; border-radius: 15px; border-top: 5px solid #2d2d2d; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-top: 20px; color: #333; }
-</style>
-''', unsafe_allow_html=True)
-
+# ── 5. UI & EXECUTION ─────────────────────────────────────────────
 st.title('🧴 AI Skin Type Research Pro')
-st.info('**Methodology:** This Hybrid AI system combines a *Random Forest Classifier* with *Gemini 2.0*.')
+st.info('**Multi-Model Architecture:** Uses Gemini 2.0 with Hugging Face (Mistral) failover.')
 
 user_inputs = []
 for i, (q, opts) in enumerate(QUESTIONS):
@@ -101,22 +104,18 @@ for i, (q, opts) in enumerate(QUESTIONS):
 if st.button('🚀 Execute Hybrid AI Analysis'):
     if None in user_inputs:
         st.warning("Please answer all questions.")
-    elif not api_key:
-        st.error("API Key not found in Streamlit Secrets.")
     else:
-        with st.spinner('Running AI Inference...'):
+        with st.spinner('Running Inference...'):
             encoded_inputs = np.array([VAL_MAP[ans] for ans in user_inputs]).reshape(1, -1)
             clf = get_trained_model()
             prediction = clf.predict(encoded_inputs)[0]
             confidence = round(np.max(clf.predict_proba(encoded_inputs)) * 100, 2)
+            
             ai_report = generate_ai_report(prediction, confidence, user_inputs)
             
             st.success("Analysis Complete")
             c1, c2 = st.columns(2)
             c1.metric("Clinical Type", prediction)
             c2.metric("ML Confidence", f"{confidence}%")
-            st.markdown(f'<div class="report-card"><h3>📋 Expert System Report</h3>{ai_report}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background-color: #f9f9f9; padding: 20px; border-radius: 10px; border-left: 5px solid #2d2d2d;"><h3>📋 Expert System Report</h3>{ai_report}</div>', unsafe_allow_html=True)
             st.balloons()
-
-st.divider()
-st.caption("Developed by Thinzar Su Hlaing | Faculty of Data Science | 2026")
