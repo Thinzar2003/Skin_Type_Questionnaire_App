@@ -7,13 +7,13 @@ from huggingface_hub import InferenceClient
 import joblib
 import os
 
-# ── 1. CONFIG & SECURITY ──────────────────────────────────────────
+# ── 1. CONFIG ─────────────────────────────────────────────────────
 st.set_page_config(page_title='AI Skin Analyzer Pro', page_icon='🧴', layout='centered')
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 hf_token = st.secrets.get("HF_TOKEN")
 
-# ── 2. DATA & QUESTIONS (STAYS THE SAME) ──────────────────────────
+# ── 2. DATA DICTIONARIES ──────────────────────────────────────────
 VAL_MAP = {
     'Very tight and uncomfortable': 0, 'Slightly tight': 1, 'Comfortable and balanced': 2, 'Fine, no particular feeling': 3,
     'Very shiny all over': 3, 'Shiny only on forehead, nose, chin (T-zone)': 2, 'Still looks the same as morning': 1, 'Feels drier and tighter': 0,
@@ -36,7 +36,7 @@ QUESTIONS = [
     ("Tissue test result?", ['A lot of oil all over', 'Oil mainly from T-zone', 'Very little oil', 'Almost nothing, skin is dry'])
 ]
 
-# ── 3. MACHINE LEARNING MODEL ─────────────────────────────────────
+# ── 3. ML MODEL ENGINE ────────────────────────────────────────────
 def get_trained_model():
     model_filename = 'skin_model.pkl'
     if os.path.exists(model_filename):
@@ -59,28 +59,22 @@ def get_trained_model():
     joblib.dump(model, model_filename)
     return model
 
-# ── 4. MULTI-MODEL AI LOGIC ───────────────────────────────────────
+# ── 4. MULTI-MODEL LLM ENGINE ─────────────────────────────────────
 def generate_ai_report(skin_type, confidence, answers):
     prompt = f"""
     Act as a professional Dermatologist for an academic project. 
     Analysis: {skin_type} skin ({confidence}% confidence).
     Data: {answers}.
-    
-    Provide:
-    1. Biological explanation.
-    2. 3-step routine.
-    3. Brief summary in Thai.
+    Provide a biological explanation, 3-step routine, and a Thai summary.
     """
     
-    # --- Try Gemini First ---
+    # Try Gemini First
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
-        return f"**[Google Gemini Engine]**\n\n{response.text}"
-    except Exception as e:
-        st.warning("Gemini Quota Exceeded. Switching to Hugging Face...")
-        
-        # --- Fallback to Hugging Face ---
+        return f"**[Engine: Google Gemini]**\n\n{response.text}"
+    except Exception:
+        # Fallback to Hugging Face
         try:
             hf_client = InferenceClient(api_key=hf_token)
             hf_response = hf_client.chat.completions.create(
@@ -88,35 +82,50 @@ def generate_ai_report(skin_type, confidence, answers):
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=800
             )
-            return f"**[Hugging Face Engine - Backup]**\n\n{hf_response.choices[0].message.content}"
-        except Exception as hf_e:
-            return f"All AI Engines failed. Local Result: This user has {skin_type} skin."
+            return f"**[Engine: Hugging Face Backup]**\n\n{hf_response.choices[0].message.content}"
+        except Exception as e:
+            return f"Service currently unavailable. Classification: {skin_type}."
 
-# ── 5. UI & EXECUTION ─────────────────────────────────────────────
+# ── 5. USER INTERFACE ─────────────────────────────────────────────
 st.title('🧴 AI Skin Type Research Pro')
-st.info('**Multi-Model Architecture:** Uses Gemini 2.0 with Hugging Face (Mistral) failover.')
+st.info('**Architecture:** Hybrid ML (Random Forest) + Multi-Model LLM (Gemini/Mistral)')
 
 user_inputs = []
 for i, (q, opts) in enumerate(QUESTIONS):
-    choice = st.selectbox(f"Q{i+1}: {q}", options=[None] + opts, index=0)
+    choice = st.selectbox(f"Q{i+1}: {q}", options=[None] + opts, key=f"q{i}")
     user_inputs.append(choice)
 
-# Replace the report-card display part in your code with this:
 if st.button('🚀 Execute Hybrid AI Analysis'):
     if None in user_inputs:
-        st.warning("Please answer all questions.")
+        st.warning("Please complete all questions first.")
     else:
-        with st.spinner('Consulting AI Experts...'):
-            # ... (your existing ML logic here) ...
-            
-            ai_report = generate_ai_report(prediction, confidence, user_inputs)
-            
-            st.success("Analysis Complete")
-            c1, c2 = st.columns(2)
-            c1.metric("Clinical Type", prediction)
-            c2.metric("ML Confidence", f"{confidence}%")
-            
-            # Use a simpler markdown block to avoid "white text on white background" issues
-            st.subheader("📋 Expert System Report")
-            st.info(ai_report) # This uses Streamlit's built-in styling which is safer
-            st.balloons()
+        # INITIALIZE VARIABLES to prevent NameError
+        prediction = "Unknown"
+        confidence = 0.0
+        
+        with st.spinner('Synchronizing AI Models...'):
+            try:
+                # 1. Run Local ML
+                encoded_inputs = np.array([VAL_MAP[ans] for ans in user_inputs]).reshape(1, -1)
+                clf = get_trained_model()
+                prediction = clf.predict(encoded_inputs)[0]
+                confidence = round(np.max(clf.predict_proba(encoded_inputs)) * 100, 1)
+                
+                # 2. Call Generative AI
+                ai_report = generate_ai_report(prediction, confidence, user_inputs)
+                
+                # 3. Display Results
+                st.success("Analysis Complete")
+                col1, col2 = st.columns(2)
+                col1.metric("Clinical Type", prediction)
+                col2.metric("ML Confidence", f"{confidence}%")
+                
+                st.markdown("---")
+                st.subheader("📋 Expert System Report")
+                st.write(ai_report)
+                st.balloons()
+            except Exception as e:
+                st.error(f"Logic Error: {str(e)}")
+
+st.divider()
+st.caption("Developed by Thinzar Su Hlaing | Faculty of Data Science | 2026")
